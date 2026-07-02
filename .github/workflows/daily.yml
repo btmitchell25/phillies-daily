@@ -1,0 +1,70 @@
+name: Phillies Daily Update
+
+on:
+  schedule:
+    # Two crons cover both EDT (16:00 UTC = noon) and EST (17:00 UTC = noon).
+    # The guard step below only proceeds when it's actually 12 PM in New York,
+    # so exactly one run fires per day year-round.
+    - cron: "0 16 * * *"
+    - cron: "0 17 * * *"
+  workflow_dispatch: {}  # manual "run now" button for testing
+
+permissions:
+  contents: write
+
+concurrency:
+  group: phillies-daily
+  cancel-in-progress: false
+
+jobs:
+  build-and-send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check it is noon in Philadelphia
+        id: guard
+        run: |
+          HOUR=$(TZ=America/New_York date +%H)
+          if [ "$HOUR" = "12" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Not noon ET (hour=$HOUR), skipping."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.guard.outputs.go == 'true'
+
+      - uses: actions/setup-python@v5
+        if: steps.guard.outputs.go == 'true'
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        if: steps.guard.outputs.go == 'true'
+        run: pip install -r requirements.txt
+
+      - name: Build today's page
+        if: steps.guard.outputs.go == 'true'
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python build_update.py
+
+      - name: Publish to GitHub Pages branch
+        if: steps.guard.outputs.go == 'true'
+        run: |
+          git config user.name "phillies-daily-bot"
+          git config user.email "actions@github.com"
+          git add index.html
+          git commit -m "Daily update $(TZ=America/New_York date +%Y-%m-%d)" || echo "No changes"
+          git push
+
+      - name: Send the noon text
+        if: steps.guard.outputs.go == 'true'
+        env:
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_FROM_NUMBER: ${{ secrets.TWILIO_FROM_NUMBER }}
+          MY_PHONE_NUMBER: ${{ secrets.MY_PHONE_NUMBER }}
+          SITE_URL: ${{ secrets.SITE_URL }}
+        run: python send_sms.py

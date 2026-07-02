@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phillies Daily — {{ date_display }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Yellowtail&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --phi-red: #E81828;
+    --phi-blue: #002D72;
+    --powder: #6BACE4;
+    --paper: #FFFFFF;
+    --ink: #14213D;
+    --muted: #5A6478;
+    --line: #E4E1DA;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Barlow', sans-serif;
+    color: var(--ink);
+    /* Signature: home-uniform pinstripes */
+    background:
+      repeating-linear-gradient(90deg,
+        #F7F5F1 0px, #F7F5F1 22px,
+        rgba(232, 24, 40, 0.16) 22px, rgba(232, 24, 40, 0.16) 23.5px);
+    min-height: 100vh;
+  }
+  .masthead {
+    background: var(--phi-red);
+    padding: 26px 16px 20px;
+    text-align: center;
+    border-bottom: 5px solid var(--phi-blue);
+  }
+  .masthead h1 {
+    font-family: 'Yellowtail', cursive;
+    font-weight: 400;
+    color: #fff;
+    font-size: clamp(2.6rem, 8vw, 3.8rem);
+    line-height: 1;
+    text-shadow: 2px 3px 0 var(--phi-blue);
+  }
+  .masthead .date {
+    font-family: 'Barlow Condensed', sans-serif;
+    color: #fff;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    margin-top: 8px;
+    opacity: 0.92;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 20px 14px 48px; }
+  .card {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 45, 114, 0.07);
+    margin-bottom: 22px;
+    overflow: hidden;
+  }
+  .card-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 0.82rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #fff;
+    background: var(--phi-blue);
+    padding: 8px 16px;
+  }
+  .card-body { padding: 16px; }
+
+  /* ---- scoreboard matchup ---- */
+  .matchup {
+    display: flex; align-items: stretch; justify-content: space-between;
+    gap: 8px; text-align: center; margin-bottom: 14px;
+  }
+  .team { flex: 1; }
+  .team .name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 1.45rem; line-height: 1.1;
+    color: var(--phi-blue);
+  }
+  .team.phi .name { color: var(--phi-red); }
+  .team .record { color: var(--muted); font-size: 0.9rem; margin-top: 2px; }
+  .team .pitcher { margin-top: 10px; font-weight: 600; font-size: 0.95rem; }
+  .team .pitch-line {
+    font-family: 'Barlow Condensed', sans-serif;
+    color: var(--muted); font-size: 0.88rem; margin-top: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .at {
+    align-self: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; color: var(--muted); font-size: 1.1rem;
+  }
+  .gameline {
+    text-align: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600; font-size: 1.05rem;
+    color: var(--ink);
+    border-top: 1px dashed var(--line);
+    padding-top: 12px;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 10px; }
+  .chip {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.88rem; font-weight: 600;
+    background: #EFF4FB; color: var(--phi-blue);
+    border: 1px solid var(--powder);
+    border-radius: 999px; padding: 4px 12px;
+  }
+
+  /* ---- tables ---- */
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.78rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted); text-align: right; padding: 6px 8px;
+    border-bottom: 2px solid var(--phi-blue);
+  }
+  th:first-child, td:first-child { text-align: left; }
+  td { padding: 7px 8px; font-size: 0.92rem; text-align: right; border-bottom: 1px solid var(--line); }
+  tr:last-child td { border-bottom: none; }
+  tr.phi-row td { background: #FDECEE; font-weight: 600; }
+  .subhead {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 1.02rem; color: var(--phi-red);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    margin: 14px 0 6px;
+  }
+  .subhead:first-child { margin-top: 0; }
+  .dash { color: var(--muted); }
+  .hot { color: var(--phi-red); font-weight: 700; }
+
+  /* ---- lists ---- */
+  .move, .rumor { padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .move:last-child, .rumor:last-child { border-bottom: none; }
+  .move .when, .rumor .when {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--muted);
+  }
+  .rumor a { color: var(--phi-blue); font-weight: 600; text-decoration: none; }
+  .rumor a:hover, .rumor a:focus { text-decoration: underline; color: var(--phi-red); }
+  .empty { color: var(--muted); font-style: italic; }
+  .scoreline {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 1.35rem;
+    padding-bottom: 10px;
+  }
+  .scoreline.win { color: var(--phi-red); }
+  .scoreline.loss { color: var(--muted); }
+  .recap { line-height: 1.55; font-size: 0.98rem; }
+  .odds-meta {
+    font-family: 'Barlow Condensed', sans-serif;
+    color: var(--muted); font-size: 0.85rem;
+    letter-spacing: 0.04em; margin-top: 10px; text-align: right;
+  }
+  tr.wc-cut td { border-bottom: 3px double var(--phi-red); }
+  .offday {
+    text-align: center; padding: 28px 16px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.3rem; font-weight: 600; color: var(--phi-blue);
+  }
+  footer {
+    text-align: center; color: var(--muted); font-size: 0.8rem; padding-bottom: 30px;
+    font-family: 'Barlow Condensed', sans-serif; letter-spacing: 0.05em;
+  }
+  a:focus-visible, .rumor a:focus-visible { outline: 3px solid var(--powder); outline-offset: 2px; }
+  @media (max-width: 480px) {
+    .team .name { font-size: 1.15rem; }
+    td, th { padding-left: 5px; padding-right: 5px; font-size: 0.85rem; }
+  }
+</style>
+</head>
+<body>
+<header class="masthead">
+  <h1>Phillies Daily</h1>
+  <div class="date">{{ date_display }} &nbsp;&bull;&nbsp; Updated {{ generated }}</div>
+</header>
+
+<main class="wrap">
+
+  {% if last_night %}
+  <section class="card">
+    <div class="card-label">Last Night</div>
+    <div class="card-body">
+      <div class="scoreline {{ 'win' if last_night.won else 'loss' }}">
+        {{ 'W' if last_night.won else 'L' }} &nbsp;
+        Phillies {{ last_night.phi_score }}, {{ last_night.opp_name }} {{ last_night.opp_score }}
+      </div>
+      <p class="recap">{{ last_night.recap }}</p>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if no_game %}
+  <section class="card">
+    <div class="card-label">Today's Game</div>
+    <div class="offday">No game today. Enjoy the off day &mdash; standings and rumors below.</div>
+  </section>
+  {% endif %}
+
+  {% for b in game_blocks %}
+  <section class="card">
+    <div class="card-label">Today's Game{% if game_blocks|length > 1 %} &mdash; Game {{ loop.index }}{% endif %}</div>
+    <div class="card-body">
+      <div class="matchup">
+        <div class="team {{ 'phi' if not b.game.is_home else '' }}">
+          <div class="name">{{ b.game.away.name }}</div>
+          <div class="record">{{ b.game.away.record }}</div>
+          {% if b.game.away.pitcher %}
+          <div class="pitcher">{{ b.game.away.pitcher.fullName }}</div>
+          {% if b.game.away.pitcher.line %}
+          <div class="pitch-line">{{ b.game.away.pitcher.line.w }}-{{ b.game.away.pitcher.line.l }}, {{ b.game.away.pitcher.line.era }} ERA, {{ b.game.away.pitcher.line.so }} K, {{ b.game.away.pitcher.line.whip }} WHIP</div>
+          {% endif %}{% endif %}
+        </div>
+        <div class="at">@</div>
+        <div class="team {{ 'phi' if b.game.is_home else '' }}">
+          <div class="name">{{ b.game.home.name }}</div>
+          <div class="record">{{ b.game.home.record }}</div>
+          {% if b.game.home.pitcher %}
+          <div class="pitcher">{{ b.game.home.pitcher.fullName }}</div>
+          {% if b.game.home.pitcher.line %}
+          <div class="pitch-line">{{ b.game.home.pitcher.line.w }}-{{ b.game.home.pitcher.line.l }}, {{ b.game.home.pitcher.line.era }} ERA, {{ b.game.home.pitcher.line.so }} K, {{ b.game.home.pitcher.line.whip }} WHIP</div>
+          {% endif %}{% endif %}
+        </div>
+      </div>
+      <div class="gameline">
+        {{ b.game.start_local }} &nbsp;&bull;&nbsp; {{ b.game.venue }} &nbsp;&bull;&nbsp; {{ b.game.series_note }}
+      </div>
+      <div class="chips">
+        {% if b.weather %}
+        <span class="chip">{{ b.weather.sky }}</span>
+        <span class="chip">{{ b.weather.temp }}&deg;F at first pitch</span>
+        <span class="chip">{{ b.weather.precip }}% precip</span>
+        <span class="chip">Wind {{ b.weather.wind }} mph</span>
+        {% else %}
+        <span class="chip">Weather unavailable</span>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  {% if loop.first %}
+  <section class="card">
+    <div class="card-label">Betting Lines</div>
+    <div class="card-body">
+      {% if odds.configured and odds.book %}
+      <table>
+        <tr><th>Team</th><th>Moneyline</th><th>Run Line</th></tr>
+        {% for team in [odds.away, odds.home] %}
+        <tr class="{{ 'phi-row' if 'Phillies' in team else '' }}">
+          <td>{{ team }}</td>
+          <td>{{ odds.ml.get(team, '—') }}</td>
+          <td>{% if odds.spread.get(team) %}{{ odds.spread[team].pt }} ({{ odds.spread[team].price }}){% else %}—{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      <div class="odds-meta">{% if odds.total %}O/U {{ odds.total }} &nbsp;&bull;&nbsp; {% endif %}Lines via {{ odds.book }}</div>
+      {% elif odds.configured %}
+      <p class="empty">No lines posted for today's game yet.</p>
+      {% else %}
+      <p class="empty">Add an ODDS_API_KEY secret to show today's lines (the-odds-api.com, free tier).</p>
+      {% endif %}
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="card">
+    <div class="card-label">Batter vs. Pitcher</div>
+    <div class="card-body">
+      {% if b.opp.pitcher %}
+      <div class="subhead">Phillies vs. {{ b.opp.pitcher.fullName }}</div>
+      {% if b.phi_bats %}
+      <table>
+        <tr><th>Batter</th><th>Season</th><th>Last 7</th><th>Career vs. SP</th></tr>
+        {% for r in b.phi_bats %}
+        <tr>
+          <td>{{ r.name }}</td>
+          <td>{{ r.season_avg }} / {{ r.season_ops }}</td>
+          <td>{% if r.l7 %}<span class="{{ 'hot' if r.l7.ops != '-' and r.l7.ops|float(0) >= 1.0 else '' }}">{{ r.l7.avg }} / {{ r.l7.ops }}{% if r.l7.hr %}, {{ r.l7.hr }} HR{% endif %}</span>{% else %}<span class="dash">&mdash;</span>{% endif %}</td>
+          <td>{% if r.bvp %}{{ r.bvp.h }}-for-{{ r.bvp.ab }}{% if r.bvp.hr %}, {{ r.bvp.hr }} HR{% endif %} ({{ r.bvp.avg }}){% else %}<span class="dash">no ABs</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}<p class="empty">Matchup data unavailable.</p>{% endif %}
+      {% endif %}
+
+      {% if b.phi.pitcher %}
+      <div class="subhead">{{ b.opp.name }} vs. {{ b.phi.pitcher.fullName }}</div>
+      {% if b.opp_bats %}
+      <table>
+        <tr><th>Batter</th><th>Season</th><th>Last 7</th><th>Career vs. SP</th></tr>
+        {% for r in b.opp_bats %}
+        <tr>
+          <td>{{ r.name }}</td>
+          <td>{{ r.season_avg }} / {{ r.season_ops }}</td>
+          <td>{% if r.l7 %}{{ r.l7.avg }} / {{ r.l7.ops }}{% if r.l7.hr %}, {{ r.l7.hr }} HR{% endif %}{% else %}<span class="dash">&mdash;</span>{% endif %}</td>
+          <td>{% if r.bvp %}{{ r.bvp.h }}-for-{{ r.bvp.ab }}{% if r.bvp.hr %}, {{ r.bvp.hr }} HR{% endif %} ({{ r.bvp.avg }}){% else %}<span class="dash">no ABs</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}<p class="empty">Matchup data unavailable.</p>{% endif %}
+      {% endif %}
+    </div>
+  </section>
+  {% endfor %}
+
+  <section class="card">
+    <div class="card-label">Roster Moves (Last 24 Hours)</div>
+    <div class="card-body">
+      {% if transactions %}
+        {% for m in transactions %}
+        <div class="move"><div class="when">{{ m.date }}</div>{{ m.desc }}</div>
+        {% endfor %}
+      {% else %}
+        <p class="empty">No transactions reported since yesterday.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-label">NL East Standings</div>
+    <div class="card-body">
+      <table>
+        <tr><th>Team</th><th>W</th><th>L</th><th>PCT</th><th>GB</th><th>WC GB</th><th>L10</th><th>Strk</th></tr>
+        {% for t in standings %}
+        <tr class="{{ 'phi-row' if t.is_phi else '' }}">
+          <td>{{ t.team }}</td><td>{{ t.w }}</td><td>{{ t.l }}</td>
+          <td>{{ t.pct }}</td><td>{{ t.gb }}</td><td>{{ t.wc_gb }}</td>
+          <td>{{ t.l10 }}</td><td>{{ t.streak }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-label">NL Wild Card</div>
+    <div class="card-body">
+      <table>
+        <tr><th></th><th>Team</th><th>W</th><th>L</th><th>WC GB</th><th>L10</th><th>Strk</th></tr>
+        {% for t in wildcard %}
+        <tr class="{{ 'phi-row' if t.is_phi else '' }}{{ ' wc-cut' if loop.index == 3 else '' }}">
+          <td>{{ t.rank }}</td><td>{{ t.team }}</td><td>{{ t.w }}</td><td>{{ t.l }}</td>
+          <td>{{ t.wc_gb }}</td><td>{{ t.l10 }}</td><td>{{ t.streak }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      <div class="odds-meta">Top three make the playoffs &mdash; line drawn below the cut.</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-label">Rumor Mill &mdash; MLBTradeRumors</div>
+    <div class="card-body">
+      {% if rumors %}
+        {% for r in rumors %}
+        <div class="rumor"><div class="when">{{ r.when }}</div><a href="{{ r.link }}" target="_blank" rel="noopener">{{ r.title }}</a></div>
+        {% endfor %}
+      {% else %}
+        <p class="empty">No Phillies items on the wire right now.</p>
+      {% endif %}
+    </div>
+  </section>
+
+</main>
+<footer>Data: MLB Stats API, Open-Meteo, MLBTradeRumors &nbsp;&bull;&nbsp; Rebuilt daily at noon ET</footer>
+</body>
+</html>
